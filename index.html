@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tシャツ色替えプレビュー</title>
+  <style>
+    body { margin:0; font-family:sans-serif; background:#f4f4f5; }
+    main { max-width:1000px; margin:auto; padding:20px; }
+    .layout { display:grid; grid-template-columns:300px 1fr; gap:20px; }
+    .panel { background:#fff; padding:16px; border-radius:12px; }
+    canvas { width:100%; max-height:600px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Tシャツ色替え</h1>
+
+  <div class="layout">
+    <div class="panel">
+      <label>Tシャツ面</label>
+      <select id="shirtSide">
+        <option value="front" selected>表</option>
+        <option value="back">裏</option>
+      </select>
+    </br>
+      <label>デザインPNG</label>
+      <input id="designInput" type="file" accept="image/png" />
+    </br>
+      <label>Tシャツ色</label>
+      <input id="shirtColor" type="color" value="#ffffff" />
+    </br>
+      <label>デザイン色</label>
+      <input id="designColor" type="color" value="#000000" />
+    </br>
+      <label>サイズ</label>
+      <input id="scale" type="range" min="10" max="80" value="40" />
+    </br>
+      <label>X位置</label>
+      <input id="posX" type="range" min="0" max="100" value="50" />
+    </br>
+      <label>Y位置</label>
+      <input id="posY" type="range" min="0" max="100" value="40" />
+    </br>
+      <button id="download">保存</button>
+    </div>
+
+    <div class="panel">
+      <canvas id="canvas" width="900" height="900"></canvas>
+    </div>
+  </div>
+</main>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const shirtSide = document.getElementById('shirtSide');
+const designInput = document.getElementById('designInput');
+const shirtColor = document.getElementById('shirtColor');
+const designColor = document.getElementById('designColor');
+const scale = document.getElementById('scale');
+const posX = document.getElementById('posX');
+const posY = document.getElementById('posY');
+
+const DISPLAY_SIZE = 900;
+const EXPORT_SIZE = 3000;
+
+let designImg = null;
+let cachedDesign = null;
+let cachedDesignKey = '';
+let renderQueued = false;
+
+const shirtImages = {
+  front: "shirt-front.png",
+  back: "shirt-back.png"
+};
+
+const shirtImg = new Image();
+shirtImg.src = shirtImages.front;
+
+function hexToRgb(hex){
+  hex = hex.replace('#','');
+  return {
+    r: parseInt(hex.slice(0,2),16),
+    g: parseInt(hex.slice(2,4),16),
+    b: parseInt(hex.slice(4,6),16)
+  };
+}
+
+function requestRender(){
+  if(renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    render();
+  });
+}
+
+function drawRecoloredShirt(targetCtx, x, y, w, h){
+  targetCtx.save();
+
+  // 色ベース
+  targetCtx.fillStyle = shirtColor.value;
+  targetCtx.fillRect(x, y, w, h);
+
+  // Tシャツ画像の透明部分で切り抜き
+  targetCtx.globalCompositeOperation = 'destination-in';
+  targetCtx.drawImage(shirtImg, x, y, w, h);
+
+  // 元画像の影・シワを重ねる
+  targetCtx.globalCompositeOperation = 'multiply';
+  targetCtx.drawImage(shirtImg, x, y, w, h);
+
+  targetCtx.restore();
+}
+
+function recolorDesign(img, color){
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+
+  const x = c.getContext('2d', { willReadFrequently:true });
+  x.drawImage(img, 0, 0);
+
+  const d = x.getImageData(0, 0, c.width, c.height);
+  const t = hexToRgb(color);
+
+  for(let i = 0; i < d.data.length; i += 4){
+    const a = d.data[i+3];
+    if(a === 0) continue;
+
+    const r = d.data[i];
+    const g = d.data[i+1];
+    const b = d.data[i+2];
+    const darkness = 1 - ((r + g + b) / 3 / 255);
+
+    d.data[i] = t.r;
+    d.data[i+1] = t.g;
+    d.data[i+2] = t.b;
+    d.data[i+3] = Math.round(a * Math.max(0, Math.min(1, darkness * 1.25)));
+  }
+
+  x.putImageData(d, 0, 0);
+  return c;
+}
+
+function getRecoloredDesign(){
+  if(!designImg) return null;
+
+  const key = designColor.value + '|' + designImg.src;
+  if(cachedDesign && cachedDesignKey === key) return cachedDesign;
+
+  cachedDesign = recolorDesign(designImg, designColor.value);
+  cachedDesignKey = key;
+  return cachedDesign;
+}
+
+function draw(targetCtx, size){
+  targetCtx.clearRect(0, 0, size, size);
+  if(!shirtImg.complete || !shirtImg.naturalWidth) return;
+
+  const ratio = Math.min(size / shirtImg.width, size / shirtImg.height);
+  const w = shirtImg.width * ratio;
+  const h = shirtImg.height * ratio;
+  const x = (size - w) / 2;
+  const y = (size - h) / 2;
+
+  drawRecoloredShirt(targetCtx, x, y, w, h);
+
+  if(!designImg) return;
+
+  const design = getRecoloredDesign();
+  const dw = w * (Number(scale.value) / 100);
+  const dh = dw * (designImg.height / designImg.width);
+
+  const dx = x + w * (Number(posX.value) / 100) - dw / 2;
+  const dy = y + h * (Number(posY.value) / 100) - dh / 2;
+
+  targetCtx.drawImage(design, dx, dy, dw, dh);
+}
+
+function render(){
+  draw(ctx, DISPLAY_SIZE);
+}
+
+shirtImg.onload = requestRender;
+
+designInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+  img.onload = () => {
+    designImg = img;
+    cachedDesign = null;
+    cachedDesignKey = '';
+    requestRender();
+  };
+});
+
+shirtSide.addEventListener('change', () => {
+  shirtImg.src = shirtImages[shirtSide.value];
+});
+
+shirtColor.addEventListener('input', requestRender);
+
+designColor.addEventListener('input', () => {
+  cachedDesign = null;
+  cachedDesignKey = '';
+  requestRender();
+});
+
+[scale, posX, posY].forEach(el => {
+  el.addEventListener('input', requestRender);
+});
+
+document.getElementById('download').onclick = () => {
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = EXPORT_SIZE;
+  exportCanvas.height = EXPORT_SIZE;
+
+  const exportCtx = exportCanvas.getContext('2d');
+  draw(exportCtx, EXPORT_SIZE);
+
+  const a = document.createElement('a');
+  a.href = exportCanvas.toDataURL('image/png');
+  a.download = "preview.png";
+  a.click();
+};
+
+render();
+</script>
+</body>
+</html>
