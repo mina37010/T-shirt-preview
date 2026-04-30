@@ -151,6 +151,11 @@
         <option value="back">裏</option>
       </select>
 
+      <label>
+      <input type="checkbox" id="invertOutline">
+        枠を反転
+      </label>
+
       <label>デザインPNG</label>
       <input id="designInput" type="file" accept="image/png" />
 
@@ -356,6 +361,29 @@ document.getElementById('download').onclick = () => {
   a.download = "preview.png";
   a.click();
 };
+
+const invertOutline = document.getElementById('invertOutline');
+
+function drawRecoloredShirt(targetCtx, x, y, w, h){
+  targetCtx.save();
+
+  targetCtx.fillStyle = shirtColor.value;
+  targetCtx.fillRect(x, y, w, h);
+
+  targetCtx.globalCompositeOperation = 'destination-in';
+  targetCtx.drawImage(shirtImg, x, y, w, h);
+
+  targetCtx.globalCompositeOperation = 'multiply';
+
+  if(invertOutline.checked){
+    targetCtx.filter = 'invert(1)';
+  }
+
+  targetCtx.drawImage(shirtImg, x, y, w, h);
+
+  targetCtx.filter = 'none';
+  targetCtx.restore();
+}
 
 render();
 </script>
