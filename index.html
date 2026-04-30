@@ -151,11 +151,6 @@
         <option value="back">裏</option>
       </select>
 
-      <label>
-      <input type="checkbox" id="invertOutline">
-        枠を反転
-      </label>
-
       <label>デザインPNG</label>
       <input id="designInput" type="file" accept="image/png" />
 
@@ -188,6 +183,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 const shirtSide = document.getElementById('shirtSide');
+const invertOutline = document.getElementById('invertOutline');
 const designInput = document.getElementById('designInput');
 const shirtColor = document.getElementById('shirtColor');
 const designColor = document.getElementById('designColor');
@@ -232,17 +228,26 @@ function requestRender(){
 function drawRecoloredShirt(targetCtx, x, y, w, h){
   targetCtx.save();
 
-  // 色ベース
+  // 1. Tシャツ色のベース
   targetCtx.fillStyle = shirtColor.value;
   targetCtx.fillRect(x, y, w, h);
 
-  // Tシャツ画像の透明部分で切り抜き
+  // 2. Tシャツ画像の透明部分で切り抜き
   targetCtx.globalCompositeOperation = 'destination-in';
   targetCtx.drawImage(shirtImg, x, y, w, h);
 
-  // 元画像の影・シワを重ねる
-  targetCtx.globalCompositeOperation = 'multiply';
-  targetCtx.drawImage(shirtImg, x, y, w, h);
+  // 3. 線・影を重ねる
+  if(invertOutline.checked){
+    // 黒Tなど暗い色用：黒線を白線に近い見え方へ反転して重ねる
+    targetCtx.globalCompositeOperation = 'screen';
+    targetCtx.filter = 'invert(1) contrast(1.15)';
+    targetCtx.drawImage(shirtImg, x, y, w, h);
+    targetCtx.filter = 'none';
+  } else {
+    // 通常：元画像の黒線・影をそのまま重ねる
+    targetCtx.globalCompositeOperation = 'multiply';
+    targetCtx.drawImage(shirtImg, x, y, w, h);
+  }
 
   targetCtx.restore();
 }
@@ -309,6 +314,8 @@ function draw(targetCtx, size){
   const dx = x + w * (Number(posX.value) / 100) - dw / 2;
   const dy = y + h * (Number(posY.value) / 100) - dh / 2;
 
+  targetCtx.globalCompositeOperation = 'source-over';
+  targetCtx.filter = 'none';
   targetCtx.drawImage(design, dx, dy, dw, dh);
 }
 
@@ -337,6 +344,7 @@ shirtSide.addEventListener('change', () => {
 });
 
 shirtColor.addEventListener('input', requestRender);
+invertOutline.addEventListener('change', requestRender);
 
 designColor.addEventListener('input', () => {
   cachedDesign = null;
@@ -361,29 +369,6 @@ document.getElementById('download').onclick = () => {
   a.download = "preview.png";
   a.click();
 };
-
-const invertOutline = document.getElementById('invertOutline');
-
-function drawRecoloredShirt(targetCtx, x, y, w, h){
-  targetCtx.save();
-
-  targetCtx.fillStyle = shirtColor.value;
-  targetCtx.fillRect(x, y, w, h);
-
-  targetCtx.globalCompositeOperation = 'destination-in';
-  targetCtx.drawImage(shirtImg, x, y, w, h);
-
-  targetCtx.globalCompositeOperation = 'multiply';
-
-  if(invertOutline.checked){
-    targetCtx.filter = 'invert(1)';
-  }
-
-  targetCtx.drawImage(shirtImg, x, y, w, h);
-
-  targetCtx.filter = 'none';
-  targetCtx.restore();
-}
 
 render();
 </script>
