@@ -54,6 +54,28 @@
       margin-top: 0;
     }
 
+    .checkboxLabel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .checkboxLabel input {
+      width: auto;
+    }
+
+    .checkboxLabel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .checkboxLabel input {
+      width: auto;
+    }
+
     input,
     select,
     button {
@@ -145,11 +167,21 @@
 
   <div class="layout">
     <div class="panel">
-      <label>Tシャツ面</label>
+  <label class="checkboxLabel">
+        <input type="checkbox" id="invertOutline">
+        枠を反転
+      </label>
+
+      <label>デザインPNG</label>l>
       <select id="shirtSide">
         <option value="front" selected>表</option>
         <option value="back">裏</option>
       </select>
+
+      <label class="checkboxLabel">
+        <input type="checkbox" id="invertOutline">
+        枠を反転
+      </label>
 
       <label>デザインPNG</label>
       <input id="designInput" type="file" accept="image/png" />
@@ -226,7 +258,9 @@ function requestRender(){
 }
 
 function drawRecoloredShirt(targetCtx, x, y, w, h){
-  targetCtx.save();
+  if(invertOutline && invertOutline.checked){
+    targetCtx.save();
+  }
 
   // 1. Tシャツ色のベース
   targetCtx.fillStyle = shirtColor.value;
@@ -333,6 +367,9 @@ designInput.addEventListener('change', e => {
   img.src = URL.createObjectURL(file);
   img.onload = () => {
     designImg = img;
+    if(invertOutline){
+      invertOutline.addEventListener('change', requestRender);
+    }
     cachedDesign = null;
     cachedDesignKey = '';
     requestRender();
@@ -344,9 +381,7 @@ shirtSide.addEventListener('change', () => {
 });
 
 shirtColor.addEventListener('input', requestRender);
-invertOutline.addEventListener('change', requestRender);
-
-designColor.addEventListener('input', () => {
+invertOutline.addEventListener('input', () => {
   cachedDesign = null;
   cachedDesignKey = '';
   requestRender();
