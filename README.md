@@ -10,7 +10,7 @@ Tシャツの色とデザインの色をブラウザ上で変更し、プレビ�
 * デザインカラー変更（黒PNG前提）
 * デザインの位置・サイズ調整
 * 表 / 裏 切り替え
-* 高解像度PNG書き出し（例：4000px）
+* 高解像度PNG書き出し（例：3000px）
 
 ---
 
@@ -41,11 +41,11 @@ Tシャツの色とデザインの色をブラウザ上で変更し、プレビ�
 ## 解像度について
 
 * 画面表示：900px
-* 書き出し：4000px（変更可能）
+* 書き出し：3000px（変更可能）
 
 変更箇所：
 
-<pre class="overflow-visible! px-0!" data-start="600" data-end="635"><div class="relative w-full mt-4 mb-1"><div class=""><div class="relative"><div class="h-full min-h-0 min-w-0"><div class="h-full min-h-0 min-w-0"><div class="border border-token-border-light border-radius-3xl corner-superellipse/1.1 rounded-3xl"><div class="h-full w-full border-radius-3xl bg-token-bg-elevated-secondary corner-superellipse/1.1 overflow-clip rounded-3xl lxnfua_clipPathFallback"><div class="pointer-events-none absolute inset-x-4 top-12 bottom-4"><div class="pointer-events-none sticky z-40 shrink-0 z-1!"><div class="sticky bg-token-border-light"></div></div></div><div class="relative"><div class=""><div class="relative z-0 flex max-w-full"><div id="code-block-viewer" dir="ltr" class="q9tKkq_viewer cm-editor z-10 light:cm-light dark:cm-light flex h-full w-full flex-col items-stretch ͼd ͼr"><div class="cm-scroller"><div class="cm-content q9tKkq_readonly"><span class="ͼg">const</span><span> </span><span class="ͼm">EXPORT_SIZE</span><span> </span><span class="ͼg">=</span><span> </span><span class="ͼj">4000</span><span>;</span></div></div></div></div></div></div></div></div></div></div><div class=""><div class=""></div></div></div></div></div></pre>
+<pre class="overflow-visible! px-0!" data-start="600" data-end="635"><div class="relative w-full mt-4 mb-1"><div class=""><div class="relative"><div class="h-full min-h-0 min-w-0"><div class="h-full min-h-0 min-w-0"><div class="border border-token-border-light border-radius-3xl corner-superellipse/1.1 rounded-3xl"><div class="h-full w-full border-radius-3xl bg-token-bg-elevated-secondary corner-superellipse/1.1 overflow-clip rounded-3xl lxnfua_clipPathFallback"><div class="pointer-events-none absolute inset-x-4 top-12 bottom-4"><div class="pointer-events-none sticky z-40 shrink-0 z-1!"><div class="sticky bg-token-border-light"></div></div></div><div class="relative"><div class=""><div class="relative z-0 flex max-w-full"><div id="code-block-viewer" dir="ltr" class="q9tKkq_viewer cm-editor z-10 light:cm-light dark:cm-light flex h-full w-full flex-col items-stretch ͼd ͼr"><div class="cm-scroller"><div class="cm-content q9tKkq_readonly"><span class="ͼg">const</span><span> </span><span class="ͼm">EXPORT_SIZE</span><span> </span><span class="ͼg">=</span><span> </span><span class="ͼj">3000</span><span>;</span></div></div></div></div></div></div></div></div></div></div><div class=""><div class=""></div></div></div></div></div></pre>
 
 ## 注意
 
