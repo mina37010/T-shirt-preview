@@ -65,17 +65,6 @@
       width: auto;
     }
 
-    .checkboxLabel {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-    }
-
-    .checkboxLabel input {
-      width: auto;
-    }
-
     input,
     select,
     button {
@@ -167,8 +156,7 @@
 
   <div class="layout">
     <div class="panel">
-      
-      <label>デザインPNG</label>
+      <label>Tシャツ面</label>
       <select id="shirtSide">
         <option value="front" selected>表</option>
         <option value="back">裏</option>
@@ -225,6 +213,8 @@ const EXPORT_SIZE = 3000;
 let designImg = null;
 let cachedDesign = null;
 let cachedDesignKey = '';
+let cachedInvertedShirt = null;
+let cachedInvertedShirtKey = '';
 let renderQueued = false;
 
 const shirtImages = {
@@ -253,10 +243,36 @@ function requestRender(){
   });
 }
 
-function drawRecoloredShirt(targetCtx, x, y, w, h){
-  if(invertOutline && invertOutline.checked){
-    targetCtx.save();
+function getInvertedShirt(){
+  const key = shirtSide.value + '|' + shirtImg.src;
+  if(cachedInvertedShirt && cachedInvertedShirtKey === key) return cachedInvertedShirt;
+
+  const c = document.createElement('canvas');
+  c.width = shirtImg.naturalWidth || shirtImg.width;
+  c.height = shirtImg.naturalHeight || shirtImg.height;
+
+  const x = c.getContext('2d', { willReadFrequently:true });
+  x.drawImage(shirtImg, 0, 0, c.width, c.height);
+
+  const d = x.getImageData(0, 0, c.width, c.height);
+
+  for(let i = 0; i < d.data.length; i += 4){
+    if(d.data[i+3] === 0) continue;
+    d.data[i] = 255 - d.data[i];
+    d.data[i+1] = 255 - d.data[i+1];
+    d.data[i+2] = 255 - d.data[i+2];
   }
+
+  x.putImageData(d, 0, 0);
+
+  cachedInvertedShirt = c;
+  cachedInvertedShirtKey = key;
+  return cachedInvertedShirt;
+}
+
+function drawRecoloredShirt(targetCtx, x, y, w, h){
+  targetCtx.save();
+  targetCtx.globalCompositeOperation = 'source-over';
 
   // 1. Tシャツ色のベース
   targetCtx.fillStyle = shirtColor.value;
@@ -267,19 +283,17 @@ function drawRecoloredShirt(targetCtx, x, y, w, h){
   targetCtx.drawImage(shirtImg, x, y, w, h);
 
   // 3. 線・影を重ねる
-  if(invertOutline.checked){
-    // 黒Tなど暗い色用：黒線を白線に近い見え方へ反転して重ねる
+  if(invertOutline && invertOutline.checked){
+    // iPhone Chrome / Safari 対策：ctx.filter は使わず、反転済み画像を重ねる
     targetCtx.globalCompositeOperation = 'screen';
-    targetCtx.filter = 'invert(1) contrast(1.15)';
-    targetCtx.drawImage(shirtImg, x, y, w, h);
-    targetCtx.filter = 'none';
+    targetCtx.drawImage(getInvertedShirt(), x, y, w, h);
   } else {
-    // 通常：元画像の黒線・影をそのまま重ねる
     targetCtx.globalCompositeOperation = 'multiply';
     targetCtx.drawImage(shirtImg, x, y, w, h);
   }
 
   targetCtx.restore();
+  targetCtx.globalCompositeOperation = 'source-over';
 }
 
 function recolorDesign(img, color){
@@ -363,9 +377,6 @@ designInput.addEventListener('change', e => {
   img.src = URL.createObjectURL(file);
   img.onload = () => {
     designImg = img;
-    if(invertOutline){
-      invertOutline.addEventListener('change', requestRender);
-    }
     cachedDesign = null;
     cachedDesignKey = '';
     requestRender();
@@ -373,11 +384,17 @@ designInput.addEventListener('change', e => {
 });
 
 shirtSide.addEventListener('change', () => {
+  cachedInvertedShirt = null;
+  cachedInvertedShirtKey = '';
   shirtImg.src = shirtImages[shirtSide.value];
 });
 
 shirtColor.addEventListener('input', requestRender);
-invertOutline.addEventListener('input', () => {
+if(invertOutline){
+  invertOutline.addEventListener('change', requestRender);
+}
+
+designColor.addEventListener('input', () => {
   cachedDesign = null;
   cachedDesignKey = '';
   requestRender();
