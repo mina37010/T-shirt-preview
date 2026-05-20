@@ -77,50 +77,18 @@
       width: 100%;
     }
 
+    input[type="color"] {
+      width: 100%;
+      height: 44px;
+      padding: 4px;
+      border: 1px solid #000000;
+    }
+
     input[type="range"] {
       width: 100%;
     }
 
-    .swatchGrid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
-
-    .swatchButton {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 1;
-      margin: 0;
-      padding: 0;
-      border: 2px solid #d4d4d8;
-      border-radius: 10px;
-      cursor: pointer;
-      background: var(--swatch-color);
-    }
-
-    .swatchButton.isActive {
-      border-color: #18181b;
-      outline: 2px solid #18181b;
-      outline-offset: 2px;
-    }
-
-    .swatchButton span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-    }
-
-    .hint {
-      margin: 8px 0 0;
-      color: #71717a;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    button#download {
+    button {
       width: 100%;
       margin-top: 18px;
       padding: 12px 16px;
@@ -200,19 +168,14 @@
         枠を反転
       </label>
 
-      <label>Tシャツ色</label>
-      <div id="shirtColorButtons" class="swatchGrid"></div>
-
-      <label>柄</label>
-      <select id="designPattern"></select>
-      <p class="hint">柄画像は design-01.png など、HTMLと同じ階層に置いてください。</p>
-
-      <label>柄PNGをアップロード</label>
+      <label>デザインPNG</label>
       <input id="designInput" type="file" accept="image/png" />
-      <p class="hint">アップロードすると柄選択は「アップロード画像」に切り替わります。</p>
 
-      <label>柄の色</label>
-      <div id="designColorButtons" class="swatchGrid"></div>
+      <label>Tシャツ色</label>
+      <input id="shirtColor" type="color" value="#ffffff" />
+
+      <label>デザイン色</label>
+      <input id="designColor" type="color" value="#000000" />
 
       <label>サイズ</label>
       <input id="scale" type="range" min="10" max="80" value="40" />
@@ -239,9 +202,8 @@ const ctx = canvas.getContext('2d');
 const shirtSide = document.getElementById('shirtSide');
 const invertOutline = document.getElementById('invertOutline');
 const designInput = document.getElementById('designInput');
-const designPattern = document.getElementById('designPattern');
-const shirtColorButtons = document.getElementById('shirtColorButtons');
-const designColorButtons = document.getElementById('designColorButtons');
+const shirtColor = document.getElementById('shirtColor');
+const designColor = document.getElementById('designColor');
 const scale = document.getElementById('scale');
 const posX = document.getElementById('posX');
 const posY = document.getElementById('posY');
@@ -249,43 +211,17 @@ const posY = document.getElementById('posY');
 const DISPLAY_SIZE = 900;
 const EXPORT_SIZE = 3000;
 
-const shirtColors = [
-  { name: 'ホワイト', value: '#ffffff' },
-  { name: 'ブラック', value: '#111111' },
-  { name: 'ネイビー', value: '#1e2a44' },
-  { name: 'グレー', value: '#9ca3af' },
-  { name: 'ベージュ', value: '#d8c3a5' },
-  { name: 'レッド', value: '#b91c1c' },
-  { name: 'ブルー', value: '#2563eb' },
-  { name: 'グリーン', value: '#15803d' }
-];
-
-const designColors = [
-  { name: 'ブラック', value: '#000000' },
-  { name: 'ホワイト', value: '#ffffff' }
-];
-
-const designPatterns = [
-  { name: 'なし', src: '' },
-  { name: '柄 01', src: 'design-01.png' },
-  { name: '柄 02', src: 'design-02.png' },
-  { name: '柄 03', src: 'design-03.png' }
-];
-
-const shirtImages = {
-  front: 'shirt-front.png',
-  back: 'shirt-back.png'
-};
-
-let selectedShirtColor = shirtColors[0].value;
-let selectedDesignColor = designColors[0].value;
 let designImg = null;
-let uploadedDesignUrl = '';
 let cachedDesign = null;
 let cachedDesignKey = '';
 let cachedInvertedShirt = null;
 let cachedInvertedShirtKey = '';
 let renderQueued = false;
+
+const shirtImages = {
+  front: "shirt-front.png",
+  back: "shirt-back.png"
+};
 
 const shirtImg = new Image();
 shirtImg.src = shirtImages.front;
@@ -306,66 +242,6 @@ function requestRender(){
     renderQueued = false;
     render();
   });
-}
-
-function createSwatchButtons(container, colors, selectedValue, onSelect){
-  container.innerHTML = '';
-
-  colors.forEach(color => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'swatchButton';
-    button.style.setProperty('--swatch-color', color.value);
-    button.dataset.value = color.value;
-    button.title = color.name;
-    button.innerHTML = `<span>${color.name}</span>`;
-
-    if(color.value === selectedValue){
-      button.classList.add('isActive');
-    }
-
-    button.addEventListener('click', () => {
-      onSelect(color.value);
-      [...container.querySelectorAll('.swatchButton')].forEach(el => {
-        el.classList.toggle('isActive', el.dataset.value === color.value);
-      });
-      requestRender();
-    });
-
-    container.appendChild(button);
-  });
-}
-
-function populateDesignPatternSelect(){
-  designPatterns.forEach((pattern, index) => {
-    const option = document.createElement('option');
-    option.value = String(index);
-    option.textContent = pattern.name;
-    designPattern.appendChild(option);
-  });
-}
-
-function loadDesign(src){
-  cachedDesign = null;
-  cachedDesignKey = '';
-
-  if(!src){
-    designImg = null;
-    requestRender();
-    return;
-  }
-
-  const img = new Image();
-  img.onload = () => {
-    designImg = img;
-    requestRender();
-  };
-  img.onerror = () => {
-    designImg = null;
-    requestRender();
-    console.warn(`柄画像を読み込めません: ${src}`);
-  };
-  img.src = src;
 }
 
 function getInvertedShirt(){
@@ -399,13 +275,17 @@ function drawRecoloredShirt(targetCtx, x, y, w, h){
   targetCtx.save();
   targetCtx.globalCompositeOperation = 'source-over';
 
-  targetCtx.fillStyle = selectedShirtColor;
+  // 1. Tシャツ色のベース
+  targetCtx.fillStyle = shirtColor.value;
   targetCtx.fillRect(x, y, w, h);
 
+  // 2. Tシャツ画像の透明部分で切り抜き
   targetCtx.globalCompositeOperation = 'destination-in';
   targetCtx.drawImage(shirtImg, x, y, w, h);
 
+  // 3. 線・影を重ねる
   if(invertOutline && invertOutline.checked){
+    // iPhone Chrome / Safari 対策：ctx.filter は使わず、反転済み画像を重ねる
     targetCtx.globalCompositeOperation = 'screen';
     targetCtx.drawImage(getInvertedShirt(), x, y, w, h);
   } else {
@@ -450,10 +330,10 @@ function recolorDesign(img, color){
 function getRecoloredDesign(){
   if(!designImg) return null;
 
-  const key = selectedDesignColor + '|' + designImg.src;
+  const key = designColor.value + '|' + designImg.src;
   if(cachedDesign && cachedDesignKey === key) return cachedDesign;
 
-  cachedDesign = recolorDesign(designImg, selectedDesignColor);
+  cachedDesign = recolorDesign(designImg, designColor.value);
   cachedDesignKey = key;
   return cachedDesign;
 }
@@ -488,19 +368,21 @@ function render(){
   draw(ctx, DISPLAY_SIZE);
 }
 
-createSwatchButtons(shirtColorButtons, shirtColors, selectedShirtColor, value => {
-  selectedShirtColor = value;
-});
-
-createSwatchButtons(designColorButtons, designColors, selectedDesignColor, value => {
-  selectedDesignColor = value;
-  cachedDesign = null;
-  cachedDesignKey = '';
-});
-
-populateDesignPatternSelect();
-
 shirtImg.onload = requestRender;
+
+designInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+  img.onload = () => {
+    designImg = img;
+    cachedDesign = null;
+    cachedDesignKey = '';
+    requestRender();
+  };
+});
 
 shirtSide.addEventListener('change', () => {
   cachedInvertedShirt = null;
@@ -508,35 +390,15 @@ shirtSide.addEventListener('change', () => {
   shirtImg.src = shirtImages[shirtSide.value];
 });
 
+shirtColor.addEventListener('input', requestRender);
 if(invertOutline){
   invertOutline.addEventListener('change', requestRender);
 }
 
-designPattern.addEventListener('change', () => {
-  const pattern = designPatterns[Number(designPattern.value)];
-  loadDesign(pattern.src);
-});
-
-designInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if(!file) return;
-
-  if(uploadedDesignUrl){
-    URL.revokeObjectURL(uploadedDesignUrl);
-  }
-
-  uploadedDesignUrl = URL.createObjectURL(file);
-
-  let uploadOption = [...designPattern.options].find(option => option.value === 'upload');
-  if(!uploadOption){
-    uploadOption = document.createElement('option');
-    uploadOption.value = 'upload';
-    uploadOption.textContent = 'アップロード画像';
-    designPattern.appendChild(uploadOption);
-  }
-
-  designPattern.value = 'upload';
-  loadDesign(uploadedDesignUrl);
+designColor.addEventListener('input', () => {
+  cachedDesign = null;
+  cachedDesignKey = '';
+  requestRender();
 });
 
 [scale, posX, posY].forEach(el => {
@@ -553,7 +415,7 @@ document.getElementById('download').onclick = () => {
 
   const a = document.createElement('a');
   a.href = exportCanvas.toDataURL('image/png');
-  a.download = 'preview.png';
+  a.download = "preview.png";
   a.click();
 };
 
