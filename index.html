@@ -175,8 +175,11 @@
       <label>Tシャツ色</label>
       <input id="shirtColor" type="color" value="#ffffff" />
 
-      <label>デザイン色</label>
-      <input id="designColor" type="color" value="#000000" />
+      <label>黒部分の色</label>
+      <input id="designBlackColor" type="color" value="#000000" />
+
+      <label>白部分の色</label>
+      <input id="designWhiteColor" type="color" value="#ffffff" />
 
       <label>サイズ</label>
       <input id="scale" type="range" min="10" max="80" value="40" />
@@ -204,7 +207,8 @@ const shirtSide = document.getElementById('shirtSide');
 const invertOutline = document.getElementById('invertOutline');
 const designInput = document.getElementById('designInput');
 const shirtColor = document.getElementById('shirtColor');
-const designColor = document.getElementById('designColor');
+const designBlackColor = document.getElementById('designBlackColor');
+const designWhiteColor = document.getElementById('designWhiteColor');
 const scale = document.getElementById('scale');
 const posX = document.getElementById('posX');
 const posY = document.getElementById('posY');
@@ -299,7 +303,11 @@ function drawRecoloredShirt(targetCtx, x, y, w, h){
   targetCtx.globalCompositeOperation = 'source-over';
 }
 
-function recolorDesign(img, color){
+function mixChannel(from, to, amount){
+  return Math.round(from + (to - from) * amount);
+}
+
+function recolorDesign(img, blackColor, whiteColor){
   const c = document.createElement('canvas');
   c.width = img.width;
   c.height = img.height;
@@ -308,7 +316,8 @@ function recolorDesign(img, color){
   x.drawImage(img, 0, 0);
 
   const d = x.getImageData(0, 0, c.width, c.height);
-  const t = hexToRgb(color);
+  const black = hexToRgb(blackColor);
+  const white = hexToRgb(whiteColor);
 
   for(let i = 0; i < d.data.length; i += 4){
     const a = d.data[i+3];
@@ -317,12 +326,12 @@ function recolorDesign(img, color){
     const r = d.data[i];
     const g = d.data[i+1];
     const b = d.data[i+2];
-    const darkness = 1 - ((r + g + b) / 3 / 255);
+    const brightness = Math.max(0, Math.min(1, (r + g + b) / 3 / 255));
 
-    d.data[i] = t.r;
-    d.data[i+1] = t.g;
-    d.data[i+2] = t.b;
-    d.data[i+3] = Math.round(a * Math.max(0, Math.min(1, darkness * 1.25)));
+    d.data[i] = mixChannel(black.r, white.r, brightness);
+    d.data[i+1] = mixChannel(black.g, white.g, brightness);
+    d.data[i+2] = mixChannel(black.b, white.b, brightness);
+    d.data[i+3] = a;
   }
 
   x.putImageData(d, 0, 0);
@@ -332,10 +341,10 @@ function recolorDesign(img, color){
 function getRecoloredDesign(){
   if(!designImg) return null;
 
-  const key = designColor.value + '|' + designImg.src;
+  const key = designBlackColor.value + '|' + designWhiteColor.value + '|' + designImg.src;
   if(cachedDesign && cachedDesignKey === key) return cachedDesign;
 
-  cachedDesign = recolorDesign(designImg, designColor.value);
+  cachedDesign = recolorDesign(designImg, designBlackColor.value, designWhiteColor.value);
   cachedDesignKey = key;
   return cachedDesign;
 }
@@ -397,10 +406,12 @@ if(invertOutline){
   invertOutline.addEventListener('change', requestRender);
 }
 
-designColor.addEventListener('input', () => {
-  cachedDesign = null;
-  cachedDesignKey = '';
-  requestRender();
+[designBlackColor, designWhiteColor].forEach(el => {
+  el.addEventListener('input', () => {
+    cachedDesign = null;
+    cachedDesignKey = '';
+    requestRender();
+  });
 });
 
 [scale, posX, posY].forEach(el => {
