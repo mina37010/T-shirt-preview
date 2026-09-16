@@ -175,10 +175,10 @@
       <label>Tシャツ色</label>
       <input id="shirtColor" type="color" value="#ffffff" />
 
-      <label>黒部分の色</label>
+      <label>線の色</label>
       <input id="designBlackColor" type="color" value="#000000" />
 
-      <label>白部分の色</label>
+      <label>面の色</label>
       <input id="designWhiteColor" type="color" value="#ffffff" />
 
       <label>サイズ</label>
@@ -219,6 +219,8 @@ const EXPORT_SIZE = 3000;
 let designImg = null;
 let cachedDesign = null;
 let cachedDesignKey = '';
+let cachedDesignOutline = null;
+let cachedDesignOutlineKey = '';
 let cachedInvertedShirt = null;
 let cachedInvertedShirtKey = '';
 let renderQueued = false;
@@ -349,6 +351,50 @@ function getRecoloredDesign(){
   return cachedDesign;
 }
 
+function getDesignOutline(){
+  if(!designImg) return null;
+
+  const key = designBlackColor.value + '|' + designImg.src;
+  if(cachedDesignOutline && cachedDesignOutlineKey === key) return cachedDesignOutline;
+
+  const c = document.createElement('canvas');
+  c.width = designImg.width;
+  c.height = designImg.height;
+
+  const x = c.getContext('2d');
+  x.drawImage(designImg, 0, 0);
+  x.globalCompositeOperation = 'source-in';
+  x.fillStyle = designBlackColor.value;
+  x.fillRect(0, 0, c.width, c.height);
+
+  cachedDesignOutline = c;
+  cachedDesignOutlineKey = key;
+  return cachedDesignOutline;
+}
+
+function drawTowelDesignOutline(targetCtx, dx, dy, dw, dh, size){
+  if(shirtSide.value !== 'towel') return;
+
+  const outline = getDesignOutline();
+  if(!outline) return;
+
+  const width = Math.max(1, Math.round(3 * (size / DISPLAY_SIZE)));
+
+  targetCtx.save();
+  targetCtx.globalCompositeOperation = 'source-over';
+  targetCtx.filter = 'none';
+
+  for(let y = -width; y <= width; y += 1){
+    for(let x = -width; x <= width; x += 1){
+      if(x === 0 && y === 0) continue;
+      if((x * x) + (y * y) > width * width) continue;
+      targetCtx.drawImage(outline, dx + x, dy + y, dw, dh);
+    }
+  }
+
+  targetCtx.restore();
+}
+
 function draw(targetCtx, size){
   targetCtx.clearRect(0, 0, size, size);
   if(!shirtImg.complete || !shirtImg.naturalWidth) return;
@@ -372,6 +418,7 @@ function draw(targetCtx, size){
 
   targetCtx.globalCompositeOperation = 'source-over';
   targetCtx.filter = 'none';
+  drawTowelDesignOutline(targetCtx, dx, dy, dw, dh, size);
   targetCtx.drawImage(design, dx, dy, dw, dh);
 }
 
@@ -391,6 +438,8 @@ designInput.addEventListener('change', e => {
     designImg = img;
     cachedDesign = null;
     cachedDesignKey = '';
+    cachedDesignOutline = null;
+    cachedDesignOutlineKey = '';
     requestRender();
   };
 });
@@ -410,6 +459,8 @@ if(invertOutline){
   el.addEventListener('input', () => {
     cachedDesign = null;
     cachedDesignKey = '';
+    cachedDesignOutline = null;
+    cachedDesignOutlineKey = '';
     requestRender();
   });
 });
